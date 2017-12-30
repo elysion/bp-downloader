@@ -15,6 +15,7 @@ if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir);
 }
 
+console.log(`Downloading into ${downloadsDir}`)
 console.log(`Logging in as ${username}`)
 
 bpApi.initAsync(username, password)
@@ -22,7 +23,7 @@ bpApi.initAsync(username, password)
   .tap(() => console.log('Getting available downloads'))
   .then(session =>
     session.getAvailableDownloadIdsAsync()
-      .tap(ids => console.log(`Found ${ids.length} available tracks`))
+      .tap(ids => console.log(`Found ${ids.length} available track(s)`))
       .mapSeries(id => session.downloadTrackWithIdAsync(id)) // this does not work point free!
       .map(request =>
         request.on('response',
