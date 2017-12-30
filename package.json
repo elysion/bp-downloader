@@ -2,6 +2,8 @@
   "name": "downloader",
   "version": "1.0.0",
   "main": "index.js",
+  "repository": "git@github.com:elysion/bp-downloader.git",
+  "author": "Miko Kiiski <miko.kiiski@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "bp-api": "git://github.com/elysion/bp-api",
