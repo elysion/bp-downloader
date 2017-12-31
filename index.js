@@ -16,53 +16,61 @@ This also works as an input to prevent downloading already downloaded tracks`)
   .argv
 
 const downloadsDir = args['downloads-dir'];
-const { username, password } = require(args['credentials-file']);
+const credentials = require(args['credentials-file']);
 const ignoreFile = args['ignore-file']
 
-let ignored = []
-if (ignoreFile) {
-  if (!fs.existsSync(ignoreFile)) {
-    fs.closeSync(fs.openSync(ignoreFile, 'w'));
-  } else {
-    ignored = fs.readFileSync(ignoreFile, {encoding: 'utf8'}).split('\n').map(Number)
+const downloadFromBeatport = (downloadsDir, {username, password}, ignoreFile) => {
+  let ignored = []
+  if (ignoreFile) {
+    if (!fs.existsSync(ignoreFile)) {
+      fs.closeSync(fs.openSync(ignoreFile, 'w'));
+    } else {
+      ignored = fs.readFileSync(ignoreFile, {encoding: 'utf8'}).split('\n').map(Number)
+    }
   }
-}
 
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir);
-}
+  if (!fs.existsSync(downloadsDir)) {
+    fs.mkdirSync(downloadsDir);
+  }
 
-console.log(`Downloading into ${downloadsDir}`)
-console.log(`Logging in as ${username}`)
+  console.log(`Downloading into ${downloadsDir}`)
+  console.log(`Logging in as ${username}`)
 
-bpApi.initAsync(username, password)
-  .tap(() => console.log('Login successful'))
-  .tap(() => console.log('Getting available downloads'))
-  .then(session =>
-    session.getAvailableDownloadIdsAsync()
-      .tap(ids => console.log(`Found ${ids.length} available track(s)`))
-      .then(R.without(ignored))
-      .tap(ids => console.log(`Found ${ids.length} new track(s)`))
-      .mapSeries(id => session.downloadTrackWithIdAsync(id)
-        .tap(request =>
-          request.on('response',
-            res => {
-              const disposition = res.headers['content-disposition']
-              const startString = 'filename=\"'
-              const endString = '\"'
-              const start = disposition.indexOf(startString) + startString.length
-              const end = disposition.indexOf(endString, start)
-              const filename = disposition.substring(start, end)
-              console.log('Downloading:', filename)
+  bpApi.initAsync(username, password)
+    .tap(() => console.log('Login successful'))
+    .tap(() => console.log('Getting available downloads'))
+    .then(session =>
+      session.getAvailableDownloadIdsAsync()
+        .tap(ids => console.log(`Found ${ids.length} available track(s)`))
+        .then(R.without(ignored))
+        .tap(ids => console.log(`Found ${ids.length} new track(s)`))
+        .mapSeries(id => session.downloadTrackWithIdAsync(id)
+          .tap(request =>
+            request.on('response',
+              res => {
+                const disposition = res.headers['content-disposition']
+                const startString = 'filename=\"'
+                const endString = '\"'
+                const start = disposition.indexOf(startString) + startString.length
+                const end = disposition.indexOf(endString, start)
+                const filename = disposition.substring(start, end)
+                console.log('Downloading:', filename)
 
-              return res
-                .pipe(fs.createWriteStream(`${downloadsDir}/${filename}`))
-                .on('finish', () => {
-                  console.log(`Done downloading ${filename}`)
-                  if (ignoreFile) {
-                    console.log(`Adding ${id} to ignore file`)
-                    fs.appendFileSync(ignoreFile, `${id}\n`)
-                  }
-                })
+                return res
+                  .pipe(fs.createWriteStream(`${downloadsDir}/${filename}`))
+                  .on('finish', () => {
+                    console.log(`Done downloading ${filename}`)
+                    if (ignoreFile) {
+                      console.log(`Adding ${id} to ignore file`)
+                      fs.appendFileSync(ignoreFile, `${id}\n`)
+                    }
+                  })
               })
-            )))
+          )))
+}
+
+if (require.main === module) {
+  return downloadFromBeatport(downloadsDir, credentials, ignoreFile)
+}
+
+module.exports = downloadFromBeatport
