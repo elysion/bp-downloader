@@ -1,6 +1,7 @@
 const bpApi = require('bp-api')
 const fs = require('fs')
 const R = require('ramda')
+const BPromise = require('bluebird')
 
 const args = require('optimist')
   .usage('Login and download available music from Beatport.\n\nUsage: $0')
@@ -36,7 +37,7 @@ const downloadFromBeatport = (downloadsDir, {username, password}, ignoreFile) =>
   console.log(`Downloading into ${downloadsDir}`)
   console.log(`Logging in as ${username}`)
 
-  bpApi.initAsync(username, password)
+  return bpApi.initAsync(username, password)
     .tap(() => console.log('Login successful'))
     .tap(() => console.log('Getting available downloads'))
     .then(session =>
@@ -46,27 +47,32 @@ const downloadFromBeatport = (downloadsDir, {username, password}, ignoreFile) =>
         .tap(ids => console.log(`Found ${ids.length} new track(s)`))
         .mapSeries(id => session.downloadTrackWithIdAsync(id)
           .tap(request =>
-            request.on('response',
-              res => {
-                const disposition = res.headers['content-disposition']
-                const startString = 'filename=\"'
-                const endString = '\"'
-                const start = disposition.indexOf(startString) + startString.length
-                const end = disposition.indexOf(endString, start)
-                const filename = disposition.substring(start, end)
-                console.log('Downloading:', filename)
+            new BPromise((resolve, reject) =>
+              request.on('response',
+                res => {
+                  const disposition = res.headers['content-disposition']
+                  const startString = 'filename=\"'
+                  const endString = '\"'
+                  const start = disposition.indexOf(startString) + startString.length
+                  const end = disposition.indexOf(endString, start)
+                  const filename = disposition.substring(start, end)
+                  console.log('Downloading:', filename)
 
-                return res
-                  .pipe(fs.createWriteStream(`${downloadsDir}/${filename}`))
-                  .on('finish', () => {
-                    console.log(`Done downloading ${filename}`)
-                    if (ignoreFile) {
-                      console.log(`Adding ${id} to ignore file`)
-                      fs.appendFileSync(ignoreFile, `${id}\n`)
-                    }
-                  })
-              })
-          )))
+                  return res
+                    .pipe(fs.createWriteStream(`${downloadsDir}/${filename}`))
+                    .on('finish', () => {
+                      console.log(`Done downloading ${filename}`)
+                      if (ignoreFile) {
+                        console.log(`Adding ${id} to ignore file`)
+                        fs.appendFileSync(ignoreFile, `${id}\n`)
+                      }
+                      resolve()
+                    })
+                    .on('error', reject)
+                })
+                .on('error', reject)
+          ))))
+    .tap(() => console.log('Success!'))
 }
 
 if (require.main === module) {
