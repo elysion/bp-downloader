@@ -3,23 +3,6 @@ const fs = require('fs')
 const R = require('ramda')
 const BPromise = require('bluebird')
 
-const args = require('optimist')
-  .usage('Login and download available music from Beatport.\n\nUsage: $0')
-  .demand(['c', 'd'])
-  .alias('d', 'downloads-dir')
-  .describe('d', 'Target directory where the script will download the tracks to')
-  .alias('c', 'credentials-file')
-  .describe('c', `JSON file containing credentials used to log into Beatport \
-(format: {"username": "YOUR_BEATPORT_USERNAME", "password": "YOUR_BEATPORT_PASSWORD"})`)
-  .alias('i', 'ignore-file')
-  .describe('i', `File to log downloaded track ids into. \
-This also works as an input to prevent downloading already downloaded tracks`)
-  .argv
-
-const downloadsDir = args['downloads-dir'];
-const credentials = require(args['credentials-file']);
-const ignoreFile = args['ignore-file']
-
 const downloadFromBeatport = (downloadsDir, {username, password}, ignoreFile) => {
   let ignored = []
   if (ignoreFile) {
@@ -76,6 +59,23 @@ const downloadFromBeatport = (downloadsDir, {username, password}, ignoreFile) =>
 }
 
 if (require.main === module) {
+  const args = require('optimist')
+    .usage('Login and download available music from Beatport.\n\nUsage: $0')
+    .demand(['c', 'd'])
+    .alias('d', 'downloads-dir')
+    .describe('d', 'Target directory where the script will download the tracks to')
+    .alias('c', 'credentials-file')
+    .describe('c', `JSON file containing credentials used to log into Beatport \
+(format: {"username": "YOUR_BEATPORT_USERNAME", "password": "YOUR_BEATPORT_PASSWORD"})`)
+    .alias('i', 'ignore-file')
+    .describe('i', `File to log downloaded track ids into. \
+This also works as an input to prevent downloading already downloaded tracks`)
+    .argv
+
+  const downloadsDir = args['downloads-dir'];
+  const credentials = require(args['credentials-file']);
+  const ignoreFile = args['ignore-file']
+
   return downloadFromBeatport(downloadsDir, credentials, ignoreFile)
 }
 
